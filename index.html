@@ -1083,9 +1083,9 @@ const USERNAME = "NITRO";
 const SONGS = [
   { file: "Motion Party.mp3",               art: "bana.jpg"   },
   { file: "Blueberry Faygo.mp3",            art: "mana.jpg"   },
-  { file: "Los_Pollos_Hermanos.mp3",        art: "k.jpg"      },
-  { file: "Champagne_Shots.mp3",            art: "banaaa.jpg" },
-  { file: "大展鴻圖_Blueprint_Supreme_.mp3", art: "fre.jpg" }
+  { file: "Los Pollos Hermanos.mp3",        art: "k.jpg"      },
+  { file: "Champagne Shots.mp3",            art: "banaaa.jpg" },
+  { file: "大展鴻圖(Blueprint Supreme).mp3", art: "fre.jpg" }
 ];
 const LINKS = [
   { label: "discord", url: "https://discord.com/users/central.nitric.atom", type: "discord" },
@@ -1146,11 +1146,11 @@ function updateViewDisplay(n) {
   document.getElementById("statViews").textContent = formatted;
 }
 
-fetch("https://api.countapi.xyz/hit/nitro.is-a.dev/visits")
+// visitor counter via hits.sh
+fetch("https://hits.sh/nitro.is-a.dev.json")
   .then(r => r.json())
-  .then(d => { if (d.value) updateViewDisplay(d.value); })
+  .then(d => { if (d.count) updateViewDisplay(d.count); })
   .catch(() => {
-    // fallback to localStorage if offline
     const v = Number(localStorage.getItem("nitroViews") || 0) + 1;
     localStorage.setItem("nitroViews", v);
     updateViewDisplay(v);
@@ -1203,8 +1203,9 @@ function cleanName(n) {
     .replace(".mp3","")
     .replace("_spotdown.org","")
     .replace(" spotdown.org","")
-    .replace("_Blueprint_Supreme_","")
+    .replace("(Blueprint Supreme)","")
     .replaceAll("_"," ")
+    .replace("(","").replace(")","")
     .trim();
 }
 function songFile(s) { return typeof s === "object" ? s.file : s; }
