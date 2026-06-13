@@ -7,7 +7,7 @@ class Api:
     def close_app(self):
         webview.windows[0].destroy()
 
-file_path = os.path.abspath("profile.html")
+file_path = os.path.abspath("index.html")
 
 if not os.path.exists(file_path):
     print("ERROR: profile.html not found next to ok.py")
