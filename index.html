@@ -1081,11 +1081,11 @@ body {
 // ─── CONFIG ───
 const USERNAME = "NITRO";
 const SONGS = [
-  { file: "Motion Party.mp3",           art: "bana.jpg"  },
-  { file: "Blueberry Faygo.mp3",        art: "mana.jpg"  },
-  { file: "Los_Pollos_Hermanos.mp3",    art: "k.jpg"     },
-  { file: "Champagne_Shots.mp3",        art: "banaaa.jpg"},
-  { file: "大展鴻圖_Blueprint_Supreme_.mp3", art: "fre.jpg"  }
+  { file: "Motion Party.mp3",               art: "bana.jpg"   },
+  { file: "Blueberry Faygo.mp3",            art: "mana.jpg"   },
+  { file: "Los_Pollos_Hermanos.mp3",        art: "k.jpg"      },
+  { file: "Champagne_Shots.mp3",            art: "banaaa.jpg" },
+  { file: "大展鴻圖_Blueprint_Supreme_.mp3", art: "fre.jpg" }
 ];
 const LINKS = [
   { label: "discord", url: "https://discord.com/users/central.nitric.atom", type: "discord" },
@@ -1239,32 +1239,25 @@ function updateSongListActive() {
   });
 }
 
-// preload all songs upfront
-const audioCache = {};
+// preload all songs using hidden audio elements
+const audioEls = [];
 function preloadAll() {
-  SONGS.forEach(s => {
-    const a = new Audio();
+  SONGS.forEach((s, i) => {
+    const a = document.createElement("audio");
     a.preload = "auto";
     a.src = songFile(s);
-    audioCache[songFile(s)] = a;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    audioEls[i] = a;
   });
 }
 
 function loadSong() {
   const s = SONGS[songIndex];
   const name = cleanName(s);
-  const file = songFile(s);
-  // swap to cached audio if available
-  if (audioCache[file]) {
-    const cached = audioCache[file];
-    music.src = file;
-    // if cached is already loaded enough, jump straight in
-    if (cached.readyState >= 3) {
-      music.currentTime = 0;
-    }
-  } else {
-    music.src = file;
-  }
+  const wasPlaying = !music.paused;
+  // copy src from preloaded element if ready
+  music.src = songFile(s);
   music.load();
   document.getElementById("songName").textContent = name;
   document.getElementById("enterSongName").textContent = name;
