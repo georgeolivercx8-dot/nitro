@@ -1081,8 +1081,11 @@ body {
 // ─── CONFIG ───
 const USERNAME = "NITRO";
 const SONGS = [
-  { file: "Motion Party.mp3",    art: "bana.jpg" },
-  { file: "Blueberry Faygo.mp3", art: "mana.jpg" }
+  { file: "Motion Party.mp3",           art: "bana.jpg"  },
+  { file: "Blueberry Faygo.mp3",        art: "mana.jpg"  },
+  { file: "Los_Pollos_Hermanos.mp3",    art: "k.jpg"     },
+  { file: "Champagne_Shots.mp3",        art: "banaaa.jpg"},
+  { file: "大展鴻圖_Blueprint_Supreme_.mp3", art: "fre.jpg"  }
 ];
 const LINKS = [
   { label: "discord", url: "https://discord.com/users/central.nitric.atom", type: "discord" },
@@ -1196,7 +1199,13 @@ function toggleQueue() {
 // ─── MUSIC PLAYER ───
 function cleanName(n) {
   if (typeof n === "object") n = n.file;
-  return n.replace(".mp3","").replace("_spotdown.org","").replace(" spotdown.org","").replaceAll("_"," ");
+  return n
+    .replace(".mp3","")
+    .replace("_spotdown.org","")
+    .replace(" spotdown.org","")
+    .replace("_Blueprint_Supreme_","")
+    .replaceAll("_"," ")
+    .trim();
 }
 function songFile(s) { return typeof s === "object" ? s.file : s; }
 function songArt(s)  { return typeof s === "object" ? s.art  : "goon.jpg"; }
@@ -1730,4 +1739,3 @@ buildSongList();
 </script>
 </body>
 </html>
-
