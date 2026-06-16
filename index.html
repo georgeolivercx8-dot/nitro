@@ -816,16 +816,14 @@ body {
   <div class="enter-card">
     <div class="enter-now-playing">NOW PLAYING</div>
     <div class="enter-song-name" id="enterSongName">Motion Party</div>
-    <div class="enter-song-sub">local playlist · 3 tracks</div>
+    <div class="enter-song-sub" id="enterSongSub">local playlist</div>
     <button class="enter-btn" onclick="enterProfile()">ENTER</button>
   </div>
 </div>
 
 <!-- BG LAYERS -->
 <div id="fallback-bg"></div>
-<video id="bgvideo" autoplay muted loop playsinline preload="auto">
-  <source src="car.mp4" type="video/mp4">
-</video>
+<video id="bgvideo" muted loop playsinline preload="none" data-src="car.mp4"></video>
 <div id="overlay"></div>
 <canvas id="particles" style="display:none"></canvas>
 <div id="scanlines"></div>
@@ -841,6 +839,8 @@ body {
   <span id="clockTime">--:--</span>
   <span style="color:rgba(255,255,255,0.3)">·</span>
   <span id="clockDate">--- --</span>
+  <span style="color:rgba(255,255,255,0.3)">·</span>
+  <span id="clockTz" style="color:rgba(138,216,255,0.7)"></span>
 </div>
 <div class="hud-chip" id="views-chip">
   <svg width="10" height="8" viewBox="0 0 10 8" fill="rgba(138,216,255,0.7)"><path d="M5 0C2.2 0 0 3 0 4s2.2 4 5 4 5-3 5-4-2.2-4-5-4zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>
@@ -883,6 +883,12 @@ body {
       <div class="online-text">online now</div>
     </div>
     <div id="statusLine">status: revising</div>
+
+    <!-- EXAM COUNTDOWN + REVISION STREAK -->
+    <div id="extraLine" style="margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+      <span id="examCountdown" class="badge" style="display:none;"></span>
+      <span id="streakChip" class="badge" style="display:none;"></span>
+    </div>
 
     <!-- DISCORD PRESENCE -->
     <div id="discordPresence" style="display:none;margin-top:12px;padding:12px 16px;border-radius:16px;background:rgba(88,101,242,0.12);border:1px solid rgba(88,101,242,0.3);display:flex;align-items:center;gap:12px;text-align:left;">
@@ -1016,10 +1022,30 @@ body {
   <button class="bar-btn" id="fsBtn" onclick="toggleFullscreen()" title="Fullscreen">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
   </button>
+  <!-- Share -->
+  <button class="bar-btn" id="shareBtn" onclick="shareProfile()" title="Share / copy link" aria-label="Share profile">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 1 0-3-3c0 .24.04.47.09.7L8.04 9.81A3 3 0 1 0 6 15a2.99 2.99 0 0 0 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65a2.92 2.92 0 1 0 2.92-2.92z"/></svg>
+  </button>
+  <!-- Shortcuts help -->
+  <button class="bar-btn" id="helpBtn" onclick="toggleShortcuts()" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11 18h2v-2h-2v2zm1-16A10 10 0 1 0 22 12 10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm0-14a4 4 0 0 0-4 4h2a2 2 0 1 1 4 0c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5a4 4 0 0 0-4-4z"/></svg>
+  </button>
   <!-- Settings -->
-  <button class="bar-btn" id="settingsBtn" onclick="toggleSettings()" title="Settings">
+  <button class="bar-btn" id="settingsBtn" onclick="toggleSettings()" title="Settings" aria-label="Settings">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58c.18-.14.22-.41.1-.61l-1.92-3.32c-.12-.22-.37-.31-.6-.22l-2.39.96c-.5-.38-1.03-.69-1.64-.94l-.36-2.55c-.04-.23-.24-.4-.48-.4h-3.76c-.24 0-.44.17-.48.4l-.36 2.55c-.61.25-1.14.56-1.64.94l-2.39-.96c-.23-.09-.48 0-.6.22L2.73 8.47c-.12.2-.08.47.1.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.22.41-.1.61l1.92 3.32c.12.22.37.31.6.22l2.39-.96c.5.38 1.03.69 1.64.94l.36 2.55c.04.23.24.4.48.4h3.76c.24 0 .44-.17.48-.4l.36-2.55c.61-.25 1.14-.56 1.64-.94l2.39.96c.23.09.48 0 .6-.22l1.92-3.32c.12-.2.08-.47-.1-.61l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5z"/></svg>
   </button>
+</div>
+
+<!-- TOAST (share / copy feedback) -->
+<div id="toast" style="position:fixed;bottom:76px;left:50%;transform:translateX(-50%) translateY(8px);z-index:90;background:rgba(6,6,18,0.92);border:1px solid rgba(138,216,255,0.4);color:#fff;font-size:12px;font-family:var(--mono);padding:9px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;box-shadow:0 8px 30px rgba(0,0,0,.6);">copied!</div>
+
+<!-- KEYBOARD SHORTCUTS OVERLAY -->
+<div id="shortcutsOverlay" style="position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);" onclick="if(event.target===this)toggleShortcuts()">
+  <div style="width:min(360px,90vw);padding:24px;border-radius:22px;background:rgba(10,10,24,0.96);border:1px solid var(--border-bright);box-shadow:0 30px 80px rgba(0,0,0,.7);">
+    <div class="settings-title" style="margin-bottom:16px;">KEYBOARD SHORTCUTS</div>
+    <div id="shortcutsList" style="display:flex;flex-direction:column;gap:9px;font-size:13px;"></div>
+    <button class="s-btn" onclick="toggleShortcuts()" style="width:100%;margin-top:18px;">close</button>
+  </div>
 </div>
 
 <!-- SPOTIFY PANEL -->
@@ -1077,6 +1103,17 @@ body {
   <div class="settings-divider"></div>
 
   <div class="settings-section">
+    <div class="settings-section-label">Scenes</div>
+    <div class="settings-row">
+      <button class="s-btn" onclick="applyScene('chill')">🧊 chill</button>
+      <button class="s-btn" onclick="applyScene('hype')">🔥 hype</button>
+      <button class="s-btn" onclick="applyScene('focus')">🎯 focus</button>
+    </div>
+  </div>
+
+  <div class="settings-divider"></div>
+
+  <div class="settings-section">
     <div class="settings-section-label">Display</div>
     <div class="settings-row">
       <button class="s-btn" id="minimalBtn" onclick="toggleMinimal()">minimal</button>
@@ -1098,7 +1135,7 @@ body {
 <div class="cursor-dot" id="cursorDot"></div>
 
 <!-- AUDIO -->
-<audio id="music" preload="auto"></audio>
+<audio id="music" preload="none"></audio>
 
 <script>
 // ─── CONFIG ───
@@ -1115,6 +1152,24 @@ const LINKS = [
   { label: "copacity", url: "https://www.copacity.club/en", type: "link" },
   { label: "steam", url: "https://store.steampowered.com/", type: "game" }
 ];
+
+// rotating taglines under your name (edit freely)
+const BIOS = [
+  "chemistry demon • locked in • gcse mode",
+  "caffeine → equations → repeat",
+  "balancing mols at 2am",
+  "the future is exothermic 🔥"
+];
+
+// exam countdown — set a future date (YYYY-MM-DD) or null to hide
+const EXAM = { name: "chemistry paper", date: "2027-05-12" };
+
+// one-tap vibes: theme + particles + brightness presets
+const SCENES = {
+  chill: { theme: "mint",  weather: "snow", particles: true,  bright: 0.4 },
+  hype:  { theme: "red",   weather: "rain", particles: true,  bright: 0.72 },
+  focus: { theme: "white", weather: "snow", particles: false, bright: 0.5 }
+};
 
 // ─── STATE ───
 let entered = false, particlesPaused = true, particlesDisabled = true;
@@ -1155,6 +1210,8 @@ function updateClock() {
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   document.getElementById("clockTime").textContent = h + ":" + m;
   document.getElementById("clockDate").textContent = days[now.getDay()] + " " + now.getDate() + " " + months[now.getMonth()];
+  const tz = document.getElementById("clockTz");
+  if (tz && !tz.textContent) tz.textContent = tzLabel();
 }
 updateClock();
 setInterval(updateClock, 1000);
@@ -1174,11 +1231,15 @@ function updateViewDisplay(n) {
   document.getElementById("statViews").textContent = formatted;
 }
 
-// visitor counter via hits.sh
-fetch("https://hits.sh/nitro.is-a.dev.json")
+// real global visit counter via abacus (free, no signup/key)
+fetch("https://abacus.jasoncameron.dev/hit/nitro-profile/visits")
   .then(r => r.json())
-  .then(d => { if (d.count) updateViewDisplay(d.count); })
+  .then(d => {
+    if (typeof d.value === "number") updateViewDisplay(d.value);
+    else throw new Error("bad response");
+  })
   .catch(() => {
+    // offline / blocked fallback: local count
     const v = Number(localStorage.getItem("nitroViews") || 0) + 1;
     localStorage.setItem("nitroViews", v);
     updateViewDisplay(v);
@@ -1272,7 +1333,10 @@ function updateSongListActive() {
 // and fill in each track's duration in the queue as it arrives
 const audioEls = [];
 const songDurations = [];
+let preloaded = false;
 function preloadAll() {
+  if (preloaded) return;
+  preloaded = true;
   SONGS.forEach((s, i) => {
     const a = document.createElement("audio");
     a.preload = "metadata";
@@ -1410,7 +1474,14 @@ function enterProfile() {
   entered = true;
   particlesPaused = false;
 
-  try { bgvideo.play(); } catch(e) {}
+  // lazy-load the background video only now (saves ~6MB on first paint)
+  try {
+    if (!bgvideo.src && bgvideo.dataset.src) bgvideo.src = bgvideo.dataset.src;
+    bgvideo.play();
+  } catch(e) {}
+
+  // lazy-load track metadata for the queue
+  preloadAll();
 
   music.volume = userVolume;
   music.currentTime = 0;
@@ -1443,6 +1514,21 @@ function startTyping(name) {
 }
 startTyping();
 
+// ─── ROTATING BIO ───
+const bioEl = document.getElementById("bioText");
+let bioCustom = false, bioIdx = 0, bioTimer = null;
+function typeBio(text) {
+  clearTimeout(bioTimer);
+  let i = 0; bioEl.textContent = "";
+  (function t(){ if (i < text.length) { bioEl.textContent += text[i++]; bioTimer = setTimeout(t, 38); } })();
+}
+function rotateBio() {
+  if (bioCustom || !entered || BIOS.length < 2) return;
+  bioIdx = (bioIdx + 1) % BIOS.length;
+  typeBio(BIOS[bioIdx]);
+}
+setInterval(rotateBio, 5200);
+
 // ─── SETTINGS ───
 function toggleSettings() {
   const opened = document.getElementById("settings").classList.toggle("show");
@@ -1453,7 +1539,10 @@ function toggleSettings() {
 }
 function applyAdmin() {
   const newName = document.getElementById("nameInput").value.trim() || "NITRO";
-  document.getElementById("bioText").textContent = document.getElementById("bioInput").value;
+  const newBio = document.getElementById("bioInput").value;
+  bioCustom = !!newBio.trim();        // stop auto-rotation once a custom bio is set
+  clearTimeout(bioTimer);
+  document.getElementById("bioText").textContent = newBio;
   startTyping(newName);
   document.getElementById("enterSongName").textContent = cleanName(SONGS[songIndex]);
 }
@@ -1487,6 +1576,10 @@ function setTheme(t) {
   r.style.setProperty("--main",   a);
   r.style.setProperty("--second", b);
   r.style.setProperty("--third",  c);
+  // lock particle / visualizer hue to the theme's primary colour
+  const themeHues = { anime: 197, purple: 270, red: 0, mint: 152, gold: 48, white: 210 };
+  baseHue = themeHues[t] != null ? themeHues[t] : 210;
+  document.querySelector('meta[name="theme-color"]').setAttribute("content", a);
   savePref("theme", t);
 }
 function toggleCursor() {
@@ -1498,7 +1591,7 @@ function toggleCursor() {
 // ─── PARTICLES ───
 const canvas = document.getElementById("particles");
 const ctx2d = canvas.getContext("2d");
-let dots = [], stars = [], hue = 210;
+let dots = [], stars = [], hue = 210, baseHue = 210;
 let cScale = 0.5;
 
 function resizeCanvas() {
@@ -1544,7 +1637,7 @@ function drawEffects() {
         ctx2d.beginPath(); ctx2d.moveTo(p.x, p.y); ctx2d.lineTo(p.x-2, p.y+10); ctx2d.stroke();
       }
     });
-    hue += 0.3; if (hue > 300) hue = 210;
+    hue = baseHue + Math.sin(Date.now() / 2500) * 10; // gentle shimmer around theme hue
   }
 }
 
@@ -1648,9 +1741,13 @@ document.addEventListener("mouseleave", () => {
 
 // ─── KEYBOARD ───
 document.addEventListener("keydown", e => {
+  // don't hijack typing in the settings / spotify inputs
+  if (/^(input|textarea)$/i.test(e.target.tagName)) return;
   const k = e.key.toLowerCase();
-  if (k === "m") music.muted = !music.muted;
-  if (k === "p") particlesPaused = !particlesPaused;
+  if (k === "escape") { document.getElementById("shortcutsOverlay").style.display = "none"; return; }
+  if (k === "?") return toggleShortcuts();
+  if (k === "m") toggleMute();
+  if (k === "p") toggleParticlesBar();
   if (k === "b") setBrightness(parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dim")) < 0.7 ? "0.8" : "0.52");
   if (k === "c") toggleCursor();
   if (k === "r") startTyping();
@@ -1762,9 +1859,14 @@ function fetchLanyard() {
       // name
       document.getElementById("discordName").textContent = data.discord_user.global_name || data.discord_user.username;
 
-      // activity
+      // activity — prefer live Spotify, then games, then status
       let activity = data.discord_status;
-      if (data.activities && data.activities.length > 0) {
+      if (data.listening_to_spotify && data.spotify) {
+        activity = "🎧 " + data.spotify.song + " — " + data.spotify.artist;
+        if (data.spotify.album_art_url) {
+          document.getElementById("discordAvatar").src = data.spotify.album_art_url;
+        }
+      } else if (data.activities && data.activities.length > 0) {
         const a = data.activities.find(x => x.type === 0) || data.activities[0];
         if (a.type === 2 && a.details) activity = "🎵 " + a.details;
         else if (a.type === 0) activity = "🎮 " + a.name;
@@ -1800,11 +1902,136 @@ function restorePrefs() {
   if (getPref("blur") === "0") toggleBlur();
 }
 
+// ─── SHARE / COPY LINK ───
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  if (!t) return;
+  t.textContent = msg;
+  t.style.opacity = "1";
+  t.style.transform = "translateX(-50%) translateY(0)";
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => {
+    t.style.opacity = "0";
+    t.style.transform = "translateX(-50%) translateY(8px)";
+  }, 1700);
+}
+function shareProfile() {
+  const url = location.href;
+  if (navigator.share) {
+    navigator.share({ title: USERNAME, text: "check out my profile", url }).catch(() => {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => showToast("link copied!")).catch(() => showToast(url));
+  } else {
+    showToast(url);
+  }
+}
+
+// ─── KEYBOARD SHORTCUTS OVERLAY ───
+const SHORTCUTS = [
+  ["M", "mute / unmute"], ["P", "toggle particles"], ["B", "brightness"],
+  ["C", "toggle cursor"], ["R", "replay name"], ["S", "shuffle"],
+  ["F", "fullscreen"], ["?", "this menu"], ["Esc", "close"]
+];
+(function buildShortcuts(){
+  const el = document.getElementById("shortcutsList");
+  if (!el) return;
+  el.innerHTML = SHORTCUTS.map(([k,d]) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+       <span style="color:rgba(255,255,255,0.7);">${d}</span>
+       <kbd style="font-family:var(--mono);font-size:11px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 9px;">${k}</kbd>
+     </div>`).join("");
+})();
+function toggleShortcuts() {
+  const o = document.getElementById("shortcutsOverlay");
+  o.style.display = o.style.display === "flex" ? "none" : "flex";
+}
+
+// ─── SCENES (theme + particles + brightness presets) ───
+function applyScene(n) {
+  const s = SCENES[n];
+  if (!s) return;
+  setTheme(s.theme);
+  themeIdx = themeList.indexOf(s.theme);
+  weatherMode = s.weather;
+  document.getElementById("weatherBtn").textContent = weatherMode;
+  particlesDisabled = !s.particles;
+  particlesPaused = particlesDisabled || !entered;
+  canvas.style.display = particlesDisabled ? "none" : "block";
+  if (!particlesDisabled) buildParticles();
+  document.getElementById("particleBtn").classList.toggle("active", !particlesDisabled);
+  setBrightness(s.bright);
+  const bs = document.querySelector('input[oninput^="setBrightness"]');
+  if (bs) bs.value = s.bright;
+  showToast(n + " scene");
+}
+
+// ─── EXAM COUNTDOWN ───
+function updateExamCountdown() {
+  const el = document.getElementById("examCountdown");
+  if (!el || !EXAM || !EXAM.date) return;
+  const days = Math.ceil((new Date(EXAM.date) - new Date()) / 86400000);
+  el.style.display = "inline-block";
+  el.textContent = days > 0 ? `🧪 ${EXAM.name} in ${days}d` : `✅ ${EXAM.name} done`;
+}
+
+// ─── DAILY REVISION STREAK ───
+function updateStreak() {
+  const el = document.getElementById("streakChip");
+  if (!el) return;
+  const today = new Date().toDateString();
+  const last = getPref("streakDay");
+  let streak = Number(getPref("streak") || 0);
+  if (last !== today) {
+    const yest = new Date(Date.now() - 86400000).toDateString();
+    streak = (last === yest) ? streak + 1 : 1;
+    savePref("streak", streak);
+    savePref("streakDay", today);
+  }
+  if (streak > 0) {
+    el.style.display = "inline-block";
+    el.textContent = `🔥 ${streak} day${streak > 1 ? "s" : ""} streak`;
+  }
+}
+
+// ─── LOCAL TIMEZONE LABEL ───
+function tzLabel() {
+  try {
+    const off = -new Date().getTimezoneOffset() / 60;
+    return "UTC" + (off >= 0 ? "+" : "") + off;
+  } catch(e) { return ""; }
+}
+
+// ─── PWA (installable home-screen icon) ───
+function setupPWA() {
+  try {
+    const icon = document.querySelector('link[rel="icon"]').href;
+    const manifest = {
+      name: USERNAME, short_name: USERNAME, start_url: ".",
+      display: "standalone", background_color: "#000000", theme_color: "#090916",
+      icons: [{ src: icon, sizes: "any", type: "image/svg+xml" }]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+    const link = document.createElement("link");
+    link.rel = "manifest";
+    link.href = URL.createObjectURL(blob);
+    document.head.appendChild(link);
+  } catch(e) {}
+}
+
+function initExtras() {
+  setupPWA();
+  updateExamCountdown();
+  setInterval(updateExamCountdown, 3600000);
+  updateStreak();
+  const sub = document.getElementById("enterSongSub");
+  if (sub) sub.textContent = "local playlist · " + SONGS.length + " tracks";
+}
+
 // ─── INIT ───
 restorePrefs();
-preloadAll();
 loadSong();
 buildSongList();
+initExtras();
 </script>
 </body>
 </html>
