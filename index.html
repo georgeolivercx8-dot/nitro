@@ -5,7 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>NITRO</title>
+<meta name="description" content="NITRO — personal profile, music player & links.">
+<meta name="author" content="NITRO">
+<meta property="og:title" content="NITRO">
+<meta property="og:description" content="personal profile · music · links">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23090916'/%3E%3Ctext x='16' y='23' font-size='20' font-family='monospace' font-weight='700' fill='%238ad8ff' text-anchor='middle'%3EN%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
@@ -689,6 +697,14 @@ body {
   pointer-events: none; z-index: 1099; opacity: 0.3;
 }
 
+/* ───── FOCUS (keyboard a11y) ───── */
+:focus-visible {
+  outline: 2px solid var(--main);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.bar-btn, .ctrl-btn, .s-btn, .enter-btn { cursor: none; }
+
 /* ───── HINT ───── */
 .hint {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -981,11 +997,19 @@ body {
 <!-- BOTTOM BAR -->
 <div id="bottomBar">
   <!-- Mute -->
-  <button class="bar-btn" id="muteBtn" onclick="toggleMute()" title="Mute">
+  <button class="bar-btn" id="muteBtn" onclick="toggleMute()" title="Mute (M)" aria-label="Mute">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
   </button>
+  <!-- Particles -->
+  <button class="bar-btn" id="particleBtn" onclick="toggleParticlesBar()" title="Particles (P)" aria-label="Toggle particles">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="7" r="1.6"/><circle cx="17" cy="5" r="1.2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="15" r="1.5"/><circle cx="7" cy="17" r="1.3"/><circle cx="14" cy="19" r="1"/></svg>
+  </button>
+  <!-- Spotify -->
+  <button class="bar-btn" id="spotifyBtn" onclick="toggleSpotify()" title="Spotify embed" aria-label="Spotify panel">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.59 14.43a.62.62 0 0 1-.86.21c-2.35-1.44-5.3-1.76-8.79-.96a.62.62 0 1 1-.28-1.21c3.82-.88 7.09-.51 9.72 1.1.3.18.39.57.21.86zm1.22-2.72a.78.78 0 0 1-1.07.26c-2.69-1.66-6.79-2.14-9.97-1.17a.78.78 0 1 1-.45-1.49c3.63-1.1 8.15-.57 11.24 1.33.37.22.49.7.25 1.07zm.11-2.84C14.8 8.95 9.6 8.76 6.53 9.69a.93.93 0 1 1-.54-1.79c3.52-1.06 9.26-.86 12.91 1.31a.94.94 0 0 1-.96 1.61z"/></svg>
+  </button>
   <!-- Theme cycle -->
-  <button class="bar-btn" id="themeBtn" onclick="cycleTheme()" title="Theme">
+  <button class="bar-btn" id="themeBtn" onclick="cycleTheme()" title="Theme" aria-label="Cycle theme">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5S18.33 12 17.5 12z"/></svg>
   </button>
   <!-- Fullscreen -->
@@ -998,12 +1022,15 @@ body {
   </button>
 </div>
 
+<!-- SPOTIFY PANEL -->
+<div id="spotifyPanel">
+  <div class="settings-title">SPOTIFY</div>
   <div style="display:flex;gap:8px;margin-bottom:10px;">
     <input id="spotifyInput" class="settings-input" placeholder="paste track or playlist URL..." style="flex:1;font-size:12px;">
     <button class="s-btn" onclick="loadSpotify()" style="white-space:nowrap;background:rgba(30,215,96,0.15);border-color:rgba(30,215,96,0.4);color:#1ed760;">load</button>
   </div>
   <div id="spotifyEmbed" style="display:none;border-radius:12px;overflow:hidden;">
-    <iframe id="spotifyIframe" style="border-radius:12px;" width="100%" height="152" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
+    <iframe id="spotifyIframe" style="border-radius:12px;" width="100%" height="152" frameborder="0" allowtransparency="true" allow="encrypted-media" loading="lazy"></iframe>
   </div>
   <div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:8px;font-family:var(--mono);">works with track, album or playlist links</div>
 </div>
@@ -1094,6 +1121,11 @@ let entered = false, particlesPaused = true, particlesDisabled = true;
 let weatherMode = "snow", blurOn = true, shuffleOn = false, loopOn = false;
 let songIndex = 0, isPlaying = false;
 let sessionStart = Date.now();
+let userVolume = 0.45;
+
+// ─── PREFERENCES (persisted across visits) ───
+function savePref(k, v) { try { localStorage.setItem("nitro_" + k, v); } catch(e) {} }
+function getPref(k) { try { return localStorage.getItem("nitro_" + k); } catch(e) { return null; } }
 
 // ─── ELEMENTS ───
 const enterEl  = document.getElementById("enter");
@@ -1222,7 +1254,7 @@ function buildSongList() {
         <div class="song-row-title">${cleanName(s)}</div>
         <div class="song-row-sub">local · mp3</div>
       </div>
-      <div class="song-row-dur" id="dur${i}">-:--</div>
+      <div class="song-row-dur" id="dur${i}">${songDurations[i] ? fmt(songDurations[i]) : "-:--"}</div>
     `;
     el.appendChild(row);
   });
@@ -1236,14 +1268,21 @@ function updateSongListActive() {
   });
 }
 
-// preload all songs using hidden audio elements
+// preload song metadata only (avoids downloading ~30MB of audio up front)
+// and fill in each track's duration in the queue as it arrives
 const audioEls = [];
+const songDurations = [];
 function preloadAll() {
   SONGS.forEach((s, i) => {
     const a = document.createElement("audio");
-    a.preload = "auto";
+    a.preload = "metadata";
     a.src = songFile(s);
     a.style.display = "none";
+    a.addEventListener("loadedmetadata", () => {
+      songDurations[i] = a.duration;
+      const d = document.getElementById("dur" + i);
+      if (d) d.textContent = fmt(a.duration);
+    });
     document.body.appendChild(a);
     audioEls[i] = a;
   });
@@ -1302,7 +1341,7 @@ music.addEventListener("ended", () => {
   else nextSong();
 });
 
-function setVolume(v) { music.volume = parseFloat(v); }
+function setVolume(v) { userVolume = parseFloat(v); music.volume = userVolume; savePref("vol", v); }
 
 function toggleShuffle() {
   shuffleOn = !shuffleOn;
@@ -1373,7 +1412,7 @@ function enterProfile() {
 
   try { bgvideo.play(); } catch(e) {}
 
-  music.volume = 0.45;
+  music.volume = userVolume;
   music.currentTime = 0;
   music.play().catch(() => {});
 }
@@ -1406,7 +1445,11 @@ startTyping();
 
 // ─── SETTINGS ───
 function toggleSettings() {
-  document.getElementById("settings").classList.toggle("show");
+  const opened = document.getElementById("settings").classList.toggle("show");
+  if (opened) {
+    document.getElementById("spotifyPanel").classList.remove("show");
+    document.getElementById("spotifyBtn").classList.remove("spotify-active");
+  }
 }
 function applyAdmin() {
   const newName = document.getElementById("nameInput").value.trim() || "NITRO";
@@ -1422,8 +1465,9 @@ function toggleBlur() {
   blurOn = !blurOn;
   document.documentElement.style.setProperty("--blur", blurOn ? "14px" : "0px");
   document.getElementById("blurBtn").classList.toggle("active", blurOn);
+  savePref("blur", blurOn ? 1 : 0);
 }
-function setBrightness(v) { document.documentElement.style.setProperty("--dim", v); }
+function setBrightness(v) { document.documentElement.style.setProperty("--dim", v); savePref("bright", v); }
 function setCardSize(v) { document.documentElement.style.setProperty("--scale", v); }
 function toggleWeather() {
   weatherMode = weatherMode === "snow" ? "rain" : "snow";
@@ -1443,6 +1487,7 @@ function setTheme(t) {
   r.style.setProperty("--main",   a);
   r.style.setProperty("--second", b);
   r.style.setProperty("--third",  c);
+  savePref("theme", t);
 }
 function toggleCursor() {
   document.getElementById("cursor").classList.toggle("hidden");
@@ -1636,8 +1681,19 @@ function toggleMute() {
 }
 
 function toggleParticlesBar() {
-  particlesPaused = !particlesPaused;
-  document.getElementById("particleBtn").classList.toggle("active", !particlesPaused);
+  particlesDisabled = !particlesDisabled;
+  particlesPaused = particlesDisabled;
+  canvas.style.display = particlesDisabled ? "none" : "block";
+  if (!particlesDisabled) buildParticles();
+  document.getElementById("particleBtn").classList.toggle("active", !particlesDisabled);
+}
+
+function toggleSpotify() {
+  const p = document.getElementById("spotifyPanel");
+  const open = !p.classList.contains("show");
+  p.classList.toggle("show", open);
+  document.getElementById("spotifyBtn").classList.toggle("spotify-active", open);
+  if (open) document.getElementById("settings").classList.remove("show");
 }
 
 const themeList = ["anime","purple","red","mint","gold","white"];
@@ -1722,7 +1778,30 @@ function fetchLanyard() {
 fetchLanyard();
 setInterval(fetchLanyard, 30000);
 
+// ─── RESTORE SAVED PREFERENCES ───
+function restorePrefs() {
+  const th = getPref("theme");
+  if (th && themeList.includes(th)) { setTheme(th); themeIdx = themeList.indexOf(th); }
+
+  const vol = getPref("vol");
+  if (vol !== null) {
+    userVolume = parseFloat(vol);
+    const vs = document.querySelector('input[oninput^="setVolume"]');
+    if (vs) vs.value = vol;
+  }
+
+  const br = getPref("bright");
+  if (br !== null) {
+    setBrightness(br);
+    const bs = document.querySelector('input[oninput^="setBrightness"]');
+    if (bs) bs.value = br;
+  }
+
+  if (getPref("blur") === "0") toggleBlur();
+}
+
 // ─── INIT ───
+restorePrefs();
 preloadAll();
 loadSong();
 buildSongList();
