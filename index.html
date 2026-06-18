@@ -271,6 +271,7 @@ body {
   transform: translateY(20px) scale(0.97);
   transition: opacity 0.85s cubic-bezier(.4,0,.2,1), transform 0.85s cubic-bezier(.4,0,.2,1);
   perspective: 1000px;
+  transform-style: preserve-3d;
   will-change: transform;
   position: relative;
 }
@@ -297,6 +298,10 @@ body {
 /* ───── AVATAR ───── */
 .avatar-wrap {
   position: relative; width: 160px; height: 160px; margin: 0 auto 4px;
+  transform: translateZ(40px);          /* lifts avatar forward for a 3D pop */
+  transform-style: preserve-3d;
+  transition: transform 0.12s ease-out;
+  will-change: transform;
 }
 .avatar-ring {
   position: absolute; inset: -10px; border-radius: 50%;
@@ -727,6 +732,8 @@ body {
   .hint { display: none; }
   * { cursor: auto !important; }
   .cursor, .cursor-dot, .trail { display: none !important; }
+  #page { padding-bottom: 88px; }
+  .avatar-wrap { transform: none !important; }   /* no 3D lift without a pointer */
 }
 
 @media (max-width: 380px) {
@@ -823,6 +830,9 @@ body {
 }
 .collapse-panel.show { display: block; }
 .lyrics-text { white-space: pre-wrap; font-size: 12px; line-height: 1.7; color: rgba(255,255,255,0.7); text-align: left; }
+.lyrics-text.synced { white-space: normal; text-align: center; }
+.lrc-line { padding: 5px 0; color: rgba(255,255,255,0.32); transition: color 0.25s, transform 0.25s, text-shadow 0.25s; }
+.lrc-line.active { color: #fff; font-weight: 600; transform: scale(1.05); text-shadow: 0 0 14px var(--main); }
 .proj-row { display: flex; align-items: center; gap: 12px; padding: 9px 8px; border-radius: 10px; text-decoration: none; transition: 0.15s; }
 .proj-row:hover { background: rgba(255,255,255,0.07); }
 .proj-name { font-size: 13px; font-weight: 600; color: #fff; }
@@ -1259,6 +1269,7 @@ let sessionStart = Date.now();
 let userVolume = 0.45;
 let currentBg = "video";
 let calmMode = false;
+let syncedLines = null, lastLrcIdx = -1, audioLevel = 0;
 
 // ─── PREFERENCES (persisted across visits) ───
 function savePref(k, v) { try { localStorage.setItem("nitro_" + k, v); } catch(e) {} }
@@ -1781,6 +1792,7 @@ function drawVisualizer() {
     vctx.stroke();
   }
   avg /= bars;
+  audioLevel = avg / 255;   // 0..1, used by the reactive shader
   document.getElementById("avatarRing").style.transform = `scale(${1 + avg/950})`;
 }
 
@@ -1790,6 +1802,7 @@ function loop(now) {
   drawEffects();
   drawVisualizer();
   updateProgress();
+  updateLyricHighlight();
   frames++;
   if (now - fpsLast >= 500) {
     document.getElementById("fpsVal").textContent = "FPS: " + Math.round(frames * 1000 / (now - fpsLast));
@@ -1829,17 +1842,21 @@ document.addEventListener("mousemove", e => { mouseX = e.clientX; mouseY = e.cli
   requestAnimationFrame(animateCursor);
 })();
 
-// ─── CARD 3D TILT ───
+// ─── CARD 3D TILT + PSEUDO-3D AVATAR PARALLAX ───
 let lastTilt = 0;
+const avatarWrap = document.querySelector(".avatar-wrap");
 document.addEventListener("mousemove", e => {
   const now = performance.now();
   if (now - lastTilt < 30) return; lastTilt = now;
   const x = (innerWidth/2 - e.pageX) / 65;
   const y = (innerHeight/2 - e.pageY) / 65;
   card.style.transform = `translateY(0) scale(var(--scale)) rotateY(${-x}deg) rotateX(${y}deg)`;
+  // avatar floats forward and leans a touch further than the card → depth
+  if (avatarWrap) avatarWrap.style.transform = `translateZ(45px) rotateY(${-x*0.6}deg) rotateX(${y*0.6}deg) translate(${-x*0.8}px, ${y*0.8}px)`;
 });
 document.addEventListener("mouseleave", () => {
   card.style.transform = "translateY(0) scale(var(--scale))";
+  if (avatarWrap) avatarWrap.style.transform = "translateZ(40px)";
 });
 
 // ─── KEYBOARD ───
@@ -2180,17 +2197,67 @@ let lyricsFor = -1;
 function toggleLyrics() {
   if (toggleCollapse("lyricsPanel", "lyricsArrow")) fetchLyrics(false);
 }
+function parseLRC(lrc) {
+  const out = [];
+  const re = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
+  lrc.split("\n").forEach(line => {
+    const text = line.replace(re, "").trim();
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(line))) {
+      const t = (+m[1]) * 60 + (+m[2]) + (m[3] ? +("0." + m[3]) : 0);
+      out.push({ time: t, text });
+    }
+  });
+  return out.sort((a, b) => a.time - b.time);
+}
+function renderSyncedLyrics(lines) {
+  const box = document.getElementById("lyricsText");
+  box.classList.add("synced");
+  box.innerHTML = lines.map((l, i) => `<div class="lrc-line" id="lrc-${i}">${esc(l.text) || "♪"}</div>`).join("");
+}
+function updateLyricHighlight() {
+  if (!syncedLines || !syncedLines.length) return;
+  const lp = document.getElementById("lyricsPanel");
+  if (!lp.classList.contains("show")) return;
+  const t = music.currentTime;
+  let idx = 0;
+  for (let i = 0; i < syncedLines.length; i++) {
+    if (syncedLines[i].time <= t) idx = i; else break;
+  }
+  if (idx === lastLrcIdx) return;
+  const prev = document.getElementById("lrc-" + lastLrcIdx);
+  if (prev) prev.classList.remove("active");
+  const cur = document.getElementById("lrc-" + idx);
+  if (cur) {
+    cur.classList.add("active");
+    const r = cur.getBoundingClientRect(), pr = lp.getBoundingClientRect();
+    lp.scrollTop += (r.top - pr.top) - lp.clientHeight / 2 + r.height / 2;
+  }
+  lastLrcIdx = idx;
+}
 function fetchLyrics(force) {
   const idx = songIndex;
   if (!force && lyricsFor === idx) return;
   const box = document.getElementById("lyricsText");
   const name = cleanName(SONGS[songIndex]);
+  syncedLines = null; lastLrcIdx = -1;
+  box.classList.remove("synced");
   box.textContent = "loading lyrics…";
   fetch("https://lrclib.net/api/search?q=" + encodeURIComponent(name))
     .then(r => r.json())
     .then(arr => {
-      const hit = (arr || []).find(x => x.plainLyrics);
-      box.textContent = (hit && hit.plainLyrics) ? hit.plainLyrics : 'no lyrics found for "' + name + '"';
+      const hits = arr || [];
+      const synced = hits.find(x => x.syncedLyrics);
+      const plain = hits.find(x => x.plainLyrics);
+      if (synced && synced.syncedLyrics) {
+        syncedLines = parseLRC(synced.syncedLyrics);
+        renderSyncedLyrics(syncedLines);
+      } else if (plain && plain.plainLyrics) {
+        box.textContent = plain.plainLyrics;
+      } else {
+        box.textContent = 'no lyrics found for "' + name + '"';
+      }
       lyricsFor = idx;
     })
     .catch(() => { box.textContent = "couldn't load lyrics (offline?)"; });
@@ -2298,12 +2365,13 @@ function startShader() {
     if (!gl) { setBg("video"); return; }
     const vsSrc = "attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}";
     const fsSrc =
-      "precision highp float;uniform vec2 uRes;uniform float uTime;uniform float uHue;" +
-      "void main(){vec2 uv=gl_FragCoord.xy/uRes.xy;float t=uTime*0.15;" +
-      "float v=sin(uv.x*3.0+t)+sin(uv.y*4.0+t*1.3)+sin((uv.x+uv.y)*3.0+t*0.7);v/=3.0;" +
+      "precision highp float;uniform vec2 uRes;uniform float uTime;uniform float uHue;uniform float uAmp;" +
+      "void main(){vec2 uv=gl_FragCoord.xy/uRes.xy;float t=uTime*(0.15+uAmp*0.6);" +
+      "float sc=3.0+uAmp*2.5;" +
+      "float v=sin(uv.x*sc+t)+sin(uv.y*(sc+1.0)+t*1.3)+sin((uv.x+uv.y)*sc+t*0.7);v/=3.0;" +
       "float h=uHue/360.0+v*0.08;" +
       "vec3 col=clamp(abs(mod(h*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0,0.0,1.0);" +
-      "float br=0.16+0.13*(v*0.5+0.5);gl_FragColor=vec4(col*br,1.0);}";
+      "float br=0.16+0.13*(v*0.5+0.5)+uAmp*0.22;gl_FragColor=vec4(col*br,1.0);}";
     const mk = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
     glProg = gl.createProgram();
     gl.attachShader(glProg, mk(gl.VERTEX_SHADER, vsSrc));
@@ -2318,6 +2386,7 @@ function startShader() {
     glU.res = gl.getUniformLocation(glProg, "uRes");
     glU.time = gl.getUniformLocation(glProg, "uTime");
     glU.hue = gl.getUniformLocation(glProg, "uHue");
+    glU.amp = gl.getUniformLocation(glProg, "uAmp");
     glStart = performance.now();
     window.addEventListener("resize", resizeShader);
   }
@@ -2333,6 +2402,7 @@ function startShader() {
     gl.uniform2f(glU.res, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.uniform1f(glU.time, (performance.now() - glStart) / 1000);
     gl.uniform1f(glU.hue, baseHue);
+    gl.uniform1f(glU.amp, audioLevel);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   })(0);
 }
