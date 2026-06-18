@@ -41,6 +41,10 @@
 
 * { cursor: none !important; }
 
+/* hide every scrollbar (scrolling still works) */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
 html {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -226,10 +230,12 @@ body {
 .hud-chip {
   position: fixed; top: 14px; z-index: 70;
   font-size: 12px; font-family: var(--mono);
-  background: rgba(0,0,0,0.50);
+  background: rgba(6,6,18,0.92);
   padding: 7px 12px; border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.14);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.45);
   display: flex; align-items: center; gap: 6px;
   transition: opacity 0.3s;
 }
@@ -248,6 +254,9 @@ body {
   display: flex; flex-direction: column;
   align-items: center;
   padding: 80px 16px 96px;
+  /* fade content out as it scrolls under the top chips / above the bottom bar */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 60px, #000 calc(100% - 64px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 60px, #000 calc(100% - 64px), transparent 100%);
 }
 #page::-webkit-scrollbar { display: none; }
 
@@ -298,8 +307,6 @@ body {
 /* ───── AVATAR ───── */
 .avatar-wrap {
   position: relative; width: 160px; height: 160px; margin: 0 auto 4px;
-  transform: translateZ(40px);          /* lifts avatar forward for a 3D pop */
-  transform-style: preserve-3d;
   transition: transform 0.12s ease-out;
   will-change: transform;
 }
@@ -724,16 +731,21 @@ body {
 
 /* ───── RESPONSIVE ───── */
 @media (max-width: 560px) {
-  #page { padding: 72px 12px 32px; }
-  .card { padding: 28px 20px 22px; }
+  #page { padding: 68px 12px 92px; }
+  .card { padding: 26px 18px 22px; }
   .username { font-size: 38px; }
   .mini-grid { grid-template-columns: 1fr; }
   .full-card { padding: 18px 16px; }
   .hint { display: none; }
   * { cursor: auto !important; }
   .cursor, .cursor-dot, .trail { display: none !important; }
-  #page { padding-bottom: 88px; }
-  .avatar-wrap { transform: none !important; }   /* no 3D lift without a pointer */
+  .avatar-wrap { transform: none !important; }   /* no parallax without a pointer */
+  /* keep the bottom bar's 8 buttons on one row */
+  #bottomBar { gap: 4px; padding: 6px 8px; }
+  .bar-btn { width: 32px; height: 32px; }
+  /* trim the clock to just the time so HUD chips don't collide */
+  #clockExtra { display: none; }
+  #fps-chip { display: none; }
 }
 
 @media (max-width: 380px) {
@@ -829,14 +841,11 @@ body {
   border: 1px solid rgba(255,255,255,0.1); padding: 12px;
 }
 .collapse-panel.show { display: block; }
-.lyrics-text { white-space: pre-wrap; font-size: 12px; line-height: 1.7; color: rgba(255,255,255,0.7); text-align: left; }
-.lyrics-text.synced { white-space: normal; text-align: center; }
-.lrc-line { padding: 5px 0; color: rgba(255,255,255,0.32); transition: color 0.25s, transform 0.25s, text-shadow 0.25s; }
-.lrc-line.active { color: #fff; font-weight: 600; transform: scale(1.05); text-shadow: 0 0 14px var(--main); }
-.proj-row { display: flex; align-items: center; gap: 12px; padding: 9px 8px; border-radius: 10px; text-decoration: none; transition: 0.15s; }
-.proj-row:hover { background: rgba(255,255,255,0.07); }
-.proj-name { font-size: 13px; font-weight: 600; color: #fff; }
-.proj-desc { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
+#lyricsPanel { max-height: 340px; }
+.lyrics-text { white-space: pre-wrap; font-size: 13px; line-height: 1.8; color: rgba(255,255,255,0.7); text-align: left; }
+.lyrics-text.synced { white-space: normal; text-align: center; font-size: 14px; }
+.lrc-line { padding: 6px 0; color: rgba(255,255,255,0.32); transition: color 0.25s, transform 0.25s, text-shadow 0.25s; }
+.lrc-line.active { color: #fff; font-weight: 600; transform: scale(1.06); text-shadow: 0 0 14px var(--main); }
 .gb-msg { text-align: left; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.04); margin-bottom: 6px; }
 .gb-name { font-size: 11px; font-weight: 700; color: var(--main); font-family: var(--mono); }
 .gb-text { font-size: 12px; color: rgba(255,255,255,0.75); margin-top: 2px; word-break: break-word; }
@@ -883,10 +892,12 @@ body {
 </div>
 <div class="hud-chip" id="clock-chip">
   <span id="clockTime">--:--</span>
-  <span style="color:rgba(255,255,255,0.3)">·</span>
-  <span id="clockDate">--- --</span>
-  <span style="color:rgba(255,255,255,0.3)">·</span>
-  <span id="clockTz" style="color:rgba(138,216,255,0.7)"></span>
+  <span id="clockExtra" style="display:inline-flex;align-items:center;gap:6px;">
+    <span style="color:rgba(255,255,255,0.3)">·</span>
+    <span id="clockDate">--- --</span>
+    <span style="color:rgba(255,255,255,0.3)">·</span>
+    <span id="clockTz" style="color:rgba(138,216,255,0.7)"></span>
+  </span>
 </div>
 <div class="hud-chip" id="views-chip">
   <svg width="10" height="8" viewBox="0 0 10 8" fill="rgba(138,216,255,0.7)"><path d="M5 0C2.2 0 0 3 0 4s2.2 4 5 4 5-3 5-4-2.2-4-5-4zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>
@@ -1046,12 +1057,6 @@ body {
     <div style="margin-top:8px;">
       <button class="collapse-btn" onclick="toggleLyrics()"><span>LYRICS</span><span id="lyricsArrow">▾</span></button>
       <div id="lyricsPanel" class="collapse-panel"><div class="lyrics-text" id="lyricsText">open to load lyrics…</div></div>
-    </div>
-
-    <!-- PROJECTS -->
-    <div style="margin-top:8px;" id="projectsBlock">
-      <button class="collapse-btn" onclick="toggleProjects()"><span>PROJECTS</span><span id="projectsArrow">▾</span></button>
-      <div id="projectsPanel" class="collapse-panel"><div id="projectsList"></div></div>
     </div>
 
     <!-- GUESTBOOK -->
@@ -1217,12 +1222,15 @@ body {
 <script>
 // ─── CONFIG ───
 const USERNAME = "NITRO";
+// `art` = album image. For ACCURATE lyrics, set `title` + `artist` to the
+// real song (the on-screen display name can stay whatever you like).
+// Leave them blank and lyrics fall back to a fuzzy search of the file name.
 const SONGS = [
-  { file: "Motion Party.mp3",               art: "bana.jpg"   },
-  { file: "Blueberry Faygo.mp3",            art: "mana.jpg"   },
-  { file: "Los Pollos Hermanos.mp3",        art: "k.jpg"      },
-  { file: "Champagne Shots.mp3",            art: "banaaa.jpg" },
-  { file: "大展鴻圖(Blueprint Supreme).mp3", art: "fre.jpg" }
+  { file: "Motion Party.mp3",               art: "bana.jpg",   title: "Motion Party",                 artist: "BossMan Dlow" },
+  { file: "Blueberry Faygo.mp3",            art: "mana.jpg",   title: "Blueberry Faygo",              artist: "Lil Mosey" },
+  { file: "Los Pollos Hermanos.mp3",        art: "k.jpg",      title: "Los Pollos Hermanos",          artist: "Knucks" },
+  { file: "Champagne Shots.mp3",            art: "banaaa.jpg", title: "Champagne Shots",              artist: "Sainté" },
+  { file: "大展鴻圖(Blueprint Supreme).mp3", art: "fre.jpg",    title: "大展鴻圖(Blueprint Supreme)",   artist: "SKAI ISYOURGOD" }
 ];
 const LINKS = [
   { label: "discord", url: "https://discord.com/users/central.nitric.atom", type: "discord" },
@@ -1247,12 +1255,6 @@ const SCENES = {
   hype:  { theme: "red",   weather: "rain", particles: true,  bright: 0.72 },
   focus: { theme: "white", weather: "snow", particles: false, bright: 0.5 }
 };
-
-// projects grid — edit/add your own; the section auto-hides if this is empty
-const PROJECTS = [
-  { name: "Sample Project", desc: "what it does in one line", url: "https://example.com" },
-  { name: "Another One",    desc: "short description here",   url: "https://example.com" }
-];
 
 // ─── GUESTBOOK BACKEND (free Supabase) ───
 // 1. Make a free project at supabase.com  2. Run the SQL I gave you in the SQL editor
@@ -1408,6 +1410,8 @@ function cleanName(n) {
 }
 function songFile(s) { return typeof s === "object" ? s.file : s; }
 function songArt(s)  { return typeof s === "object" ? s.art  : "goon.jpg"; }
+function songTitle(s)  { return (typeof s === "object" && s.title)  ? s.title  : cleanName(s); }
+function songArtist(s) { return (typeof s === "object" && s.artist) ? s.artist : ""; }
 
 function buildSongList() {
   const el = document.getElementById("songListEl");
@@ -1474,9 +1478,9 @@ function loadSong() {
   document.getElementById("albumImg").src = art;
   document.getElementById("albumArt").style.background = "none";
   updateSongListActive();
-  // refresh lyrics if the panel is open
+  // refresh lyrics if the panel is open (uses cache when available)
   const lp = document.getElementById("lyricsPanel");
-  if (lp && lp.classList.contains("show")) fetchLyrics(true);
+  if (lp && lp.classList.contains("show")) fetchLyrics(false);
 }
 
 function nextSong() {
@@ -1851,12 +1855,12 @@ document.addEventListener("mousemove", e => {
   const x = (innerWidth/2 - e.pageX) / 65;
   const y = (innerHeight/2 - e.pageY) / 65;
   card.style.transform = `translateY(0) scale(var(--scale)) rotateY(${-x}deg) rotateX(${y}deg)`;
-  // avatar floats forward and leans a touch further than the card → depth
-  if (avatarWrap) avatarWrap.style.transform = `translateZ(45px) rotateY(${-x*0.6}deg) rotateX(${y*0.6}deg) translate(${-x*0.8}px, ${y*0.8}px)`;
+  // subtle parallax float (no rotation, so the pic stays a clean circle)
+  if (avatarWrap) avatarWrap.style.transform = `translate(${-x*1.1}px, ${y*1.1}px)`;
 });
 document.addEventListener("mouseleave", () => {
   card.style.transform = "translateY(0) scale(var(--scale))";
-  if (avatarWrap) avatarWrap.style.transform = "translateZ(40px)";
+  if (avatarWrap) avatarWrap.style.transform = "";
 });
 
 // ─── KEYBOARD ───
@@ -2146,7 +2150,6 @@ function initExtras() {
   updateExamCountdown();
   setInterval(updateExamCountdown, 3600000);
   updateStreak();
-  buildProjects();
   setupCalm();
   const sub = document.getElementById("enterSongSub");
   if (sub) sub.textContent = "local playlist · " + SONGS.length + " tracks";
@@ -2236,51 +2239,63 @@ function updateLyricHighlight() {
   }
   lastLrcIdx = idx;
 }
+// pick the best lrclib hit: must have lyrics, prefer the one whose duration
+// matches our local track (kills wrong-song matches), prefer synced
+function pickBestLyric(hits, wantDur) {
+  const withLy = (hits || []).filter(h => h.syncedLyrics || h.plainLyrics);
+  if (!withLy.length) return null;
+  if (wantDur) {
+    const sorted = withLy.slice().sort((a, b) =>
+      Math.abs((a.duration || 0) - wantDur) - Math.abs((b.duration || 0) - wantDur));
+    // only trust a duration match within 8s, otherwise it's probably the wrong song
+    if (Math.abs((sorted[0].duration || 0) - wantDur) <= 8) {
+      const synced = sorted.find(h => Math.abs((h.duration || 0) - wantDur) <= 8 && h.syncedLyrics);
+      return synced || sorted[0];
+    }
+    return null;
+  }
+  return withLy.find(h => h.syncedLyrics) || withLy[0];
+}
+function applyLyrics(best, idx) {
+  if (idx !== songIndex) return;   // user changed track mid-fetch
+  const box = document.getElementById("lyricsText");
+  syncedLines = null; lastLrcIdx = -1;
+  box.classList.remove("synced");
+  if (best && best.syncedLyrics) {
+    syncedLines = parseLRC(best.syncedLyrics);
+    renderSyncedLyrics(syncedLines);
+  } else if (best && best.plainLyrics) {
+    box.textContent = best.plainLyrics;
+  } else {
+    const a = songArtist(SONGS[idx]);
+    box.textContent = 'no lyrics found for "' + songTitle(SONGS[idx]) + '"' +
+      (a ? "" : " — set a title/artist in the file for a reliable match");
+  }
+  lyricsFor = idx;
+}
+const lyricsCache = {};
 function fetchLyrics(force) {
   const idx = songIndex;
   if (!force && lyricsFor === idx) return;
+  if (lyricsCache[idx] !== undefined) { applyLyrics(lyricsCache[idx], idx); return; }
   const box = document.getElementById("lyricsText");
-  const name = cleanName(SONGS[songIndex]);
+  const s = SONGS[idx];
+  const title = songTitle(s), artist = songArtist(s);
   syncedLines = null; lastLrcIdx = -1;
   box.classList.remove("synced");
   box.textContent = "loading lyrics…";
-  fetch("https://lrclib.net/api/search?q=" + encodeURIComponent(name))
+  const query = artist
+    ? "track_name=" + encodeURIComponent(title) + "&artist_name=" + encodeURIComponent(artist)
+    : "q=" + encodeURIComponent(title);
+  fetch("https://lrclib.net/api/search?" + query)
     .then(r => r.json())
-    .then(arr => {
-      const hits = arr || [];
-      const synced = hits.find(x => x.syncedLyrics);
-      const plain = hits.find(x => x.plainLyrics);
-      if (synced && synced.syncedLyrics) {
-        syncedLines = parseLRC(synced.syncedLyrics);
-        renderSyncedLyrics(syncedLines);
-      } else if (plain && plain.plainLyrics) {
-        box.textContent = plain.plainLyrics;
-      } else {
-        box.textContent = 'no lyrics found for "' + name + '"';
-      }
-      lyricsFor = idx;
+    .then(hits => {
+      const best = pickBestLyric(hits, songDurations[idx]);
+      lyricsCache[idx] = best;          // cache result (incl. null) so reopen is instant
+      applyLyrics(best, idx);
     })
-    .catch(() => { box.textContent = "couldn't load lyrics (offline?)"; });
+    .catch(() => { if (idx === songIndex) box.textContent = "couldn't load lyrics (offline?)"; });
 }
-
-// ─── PROJECTS ───
-function buildProjects() {
-  const block = document.getElementById("projectsBlock");
-  const list = document.getElementById("projectsList");
-  if (!Array.isArray(PROJECTS) || PROJECTS.length === 0) {
-    if (block) block.style.display = "none";
-    return;
-  }
-  list.innerHTML = PROJECTS.map(p => `
-    <a class="proj-row" href="${p.url}" target="_blank" rel="noopener">
-      <div style="flex:1;min-width:0;">
-        <div class="proj-name">${esc(p.name)}</div>
-        <div class="proj-desc">${esc(p.desc || "")}</div>
-      </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)"><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7zM5 5h5V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5h-2v5H5V5z"/></svg>
-    </a>`).join("");
-}
-function toggleProjects() { toggleCollapse("projectsPanel", "projectsArrow"); }
 
 // ─── GUESTBOOK (Supabase REST) ───
 function esc(s) {
