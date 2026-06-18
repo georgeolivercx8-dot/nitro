@@ -14,6 +14,8 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23090916'/%3E%3Ctext x='16' y='23' font-size='20' font-family='monospace' font-weight='700' fill='%238ad8ff' text-anchor='middle'%3EN%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="image" href="mana.jpg">
+<link rel="preload" as="image" href="bana.jpg">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
@@ -745,6 +747,11 @@ body {
   .enter-logo, #grain, .loading-fill { animation: none; }
 }
 
+/* ───── CALM / LOW-POWER MODE (reduced motion or low battery) ───── */
+.calm #grain, .calm #overlay, .calm .avatar-ring,
+.calm .card::before, .calm .username, .calm .status-dot,
+.calm .online-dot, .calm .enter-logo, .calm .enter-btn { animation: none !important; }
+
 /* ───── BOTTOM BAR ───── */
 #bottomBar {
   position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
@@ -1251,6 +1258,7 @@ let songIndex = 0, isPlaying = false;
 let sessionStart = Date.now();
 let userVolume = 0.45;
 let currentBg = "video";
+let calmMode = false;
 
 // ─── PREFERENCES (persisted across visits) ───
 function savePref(k, v) { try { localStorage.setItem("nitro_" + k, v); } catch(e) {} }
@@ -1273,7 +1281,23 @@ const ltInterval = setInterval(() => {
   else clearInterval(ltInterval);
 }, 600);
 
-setTimeout(() => { loadingEl.style.display = "none"; }, 1900);
+// hide the loader once assets are actually ready (min 900ms so it reads,
+// hard 3.5s fallback so a slow asset never traps the visitor)
+let loadingHidden = false;
+const loadStart = Date.now();
+function hideLoading() {
+  if (loadingHidden) return;
+  loadingHidden = true;
+  const wait = Math.max(0, 900 - (Date.now() - loadStart));
+  setTimeout(() => {
+    loadingEl.style.transition = "opacity 0.4s ease";
+    loadingEl.style.opacity = "0";
+    setTimeout(() => { loadingEl.style.display = "none"; }, 400);
+  }, wait);
+}
+if (document.readyState === "complete") hideLoading();
+else window.addEventListener("load", hideLoading);
+setTimeout(hideLoading, 3500);
 
 // ─── CLOCK ───
 function updateClock() {
@@ -2106,8 +2130,39 @@ function initExtras() {
   setInterval(updateExamCountdown, 3600000);
   updateStreak();
   buildProjects();
+  setupCalm();
   const sub = document.getElementById("enterSongSub");
   if (sub) sub.textContent = "local playlist · " + SONGS.length + " tracks";
+}
+
+// ─── CALM / LOW-POWER MODE (reduced motion or low battery) ───
+function setCalm(on) {
+  calmMode = on;
+  document.body.classList.toggle("calm", on);
+  if (on) {                 // kill heavy effects
+    particlesDisabled = true;
+    particlesPaused = true;
+    canvas.style.display = "none";
+    document.getElementById("particleBtn").classList.remove("active");
+  }
+}
+function setupCalm() {
+  let reduceMotion = false, lowBattery = false;
+  const apply = () => setCalm(reduceMotion || lowBattery);
+  try {
+    const mq = matchMedia("(prefers-reduced-motion: reduce)");
+    reduceMotion = mq.matches;
+    if (mq.addEventListener) mq.addEventListener("change", e => { reduceMotion = e.matches; apply(); });
+  } catch(e) {}
+  if (navigator.getBattery) {
+    navigator.getBattery().then(b => {
+      const check = () => { lowBattery = (b.level < 0.2 && !b.charging); apply(); };
+      check();
+      b.addEventListener("levelchange", check);
+      b.addEventListener("chargingchange", check);
+    }).catch(() => {});
+  }
+  apply();
 }
 
 // ─── COLLAPSIBLE SECTIONS ───
@@ -2192,16 +2247,45 @@ function loadGuestbook() {
     })
     .catch(() => setGbStatus("couldn't load guestbook (check keys / table)"));
 }
+// light client-side moderation — masks common profanity (not exhaustive,
+// and not a security boundary; real abuse protection needs server-side rules)
+const BAD_WORDS = ["fuck","shit","bitch","cunt","asshole","bastard","dick","piss","slut","whore","nigger","faggot","retard"];
+function censor(s) {
+  let out = s;
+  BAD_WORDS.forEach(w => {
+    out = out.replace(new RegExp(w, "gi"), m => m[0] + "*".repeat(Math.max(1, m.length - 1)));
+  });
+  return out;
+}
+const GB_COOLDOWN_MS = 60000; // one post per visitor per minute
 function postGuestbook() {
   if (!guestbookConfigured()) { setGbStatus("guestbook offline — add Supabase keys"); return; }
-  const name = (document.getElementById("gbName").value.trim() || "anon").slice(0, 24);
-  const message = document.getElementById("gbMessage").value.trim().slice(0, 180);
-  if (!message) { setGbStatus("write a message first"); return; }
+
+  // rate limit (client-side; deters casual spam)
+  const last = Number(getPref("gbLast") || 0);
+  const since = Date.now() - last;
+  if (since < GB_COOLDOWN_MS) {
+    setGbStatus("slow down — try again in " + Math.ceil((GB_COOLDOWN_MS - since) / 1000) + "s");
+    return;
+  }
+
+  let name = (document.getElementById("gbName").value.trim() || "anon").slice(0, 24);
+  let message = document.getElementById("gbMessage").value.trim().slice(0, 180);
+  if (message.length < 2) { setGbStatus("message too short"); return; }
+
+  name = censor(name);
+  message = censor(message);
+
   setGbStatus("posting…");
   fetch(SUPABASE_URL + "/rest/v1/guestbook", {
     method: "POST", headers: gbHeaders(), body: JSON.stringify({ name, message })
   })
-    .then(r => { if (!r.ok) throw new Error("post failed"); document.getElementById("gbMessage").value = ""; loadGuestbook(); })
+    .then(r => {
+      if (!r.ok) throw new Error("post failed");
+      savePref("gbLast", Date.now());
+      document.getElementById("gbMessage").value = "";
+      loadGuestbook();
+    })
     .catch(() => setGbStatus("couldn't post (check keys / table policy)"));
 }
 
@@ -2239,14 +2323,18 @@ function startShader() {
   }
   resizeShader();
   cancelAnimationFrame(shaderRAF);
-  (function render() {
+  let lastFrame = 0;
+  (function render(now) {
     if (!gl) return;
+    shaderRAF = requestAnimationFrame(render);
+    // throttle to ~30fps in calm/low-power mode
+    if (calmMode && now - lastFrame < 33) return;
+    lastFrame = now || 0;
     gl.uniform2f(glU.res, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.uniform1f(glU.time, (performance.now() - glStart) / 1000);
     gl.uniform1f(glU.hue, baseHue);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    shaderRAF = requestAnimationFrame(render);
-  })();
+  })(0);
 }
 function resizeShader() {
   if (!gl) return;
