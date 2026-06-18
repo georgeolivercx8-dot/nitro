@@ -90,14 +90,14 @@ body {
 }
 
 #scanlines {
-  position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0.10;
+  position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0.04;
   background: repeating-linear-gradient(to bottom,
     rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px,
     transparent 1px, transparent 4px);
 }
 
 #grain {
-  position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0.04;
+  position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0.022;
   background-image: radial-gradient(circle, white 1px, transparent 1px);
   background-size: 3px 3px;
   animation: grain 0.45s steps(2) infinite;
@@ -253,7 +253,7 @@ body {
   scrollbar-width: none; -ms-overflow-style: none;
   display: flex; flex-direction: column;
   align-items: center;
-  padding: 80px 16px 96px;
+  padding: 60px 16px 90px;
   /* fade content out as it scrolls under the top chips / above the bottom bar */
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 60px, #000 calc(100% - 64px), transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 60px, #000 calc(100% - 64px), transparent 100%);
@@ -262,8 +262,8 @@ body {
 
 /* ───── MAIN CARD ───── */
 .card {
-  width: min(560px, 100%);
-  padding: 36px 32px 28px;
+  width: min(540px, 100%);
+  padding: 22px 26px 20px;
   border-radius: var(--radius-card);
   text-align: center;
   background: var(--glass);
@@ -273,9 +273,9 @@ body {
   box-shadow:
     0 0 0 1px rgba(0,0,0,0.4),
     0 32px 100px rgba(0,0,0,0.7),
-    0 0 80px rgba(138,216,255,0.18),
-    0 0 140px rgba(180,108,255,0.10),
-    inset 0 0 60px rgba(255,255,255,0.04);
+    0 0 60px rgba(138,216,255,0.10),
+    0 0 120px rgba(180,108,255,0.06),
+    inset 0 0 60px rgba(255,255,255,0.03);
   opacity: 0;
   transform: translateY(20px) scale(0.97);
   transition: opacity 0.85s cubic-bezier(.4,0,.2,1), transform 0.85s cubic-bezier(.4,0,.2,1);
@@ -306,12 +306,12 @@ body {
 
 /* ───── AVATAR ───── */
 .avatar-wrap {
-  position: relative; width: 160px; height: 160px; margin: 0 auto 4px;
+  position: relative; width: 124px; height: 124px; margin: 0 auto 2px;
   transition: transform 0.12s ease-out;
   will-change: transform;
 }
 .avatar-ring {
-  position: absolute; inset: -10px; border-radius: 50%;
+  position: absolute; inset: -8px; border-radius: 50%;
   background: conic-gradient(var(--main), var(--second), var(--third), var(--main));
   filter: blur(4px); opacity: 1;
   animation: ringRotate 4s linear infinite;
@@ -319,18 +319,18 @@ body {
 @keyframes ringRotate { to { transform: rotate(360deg); } }
 
 #visualizer {
-  position: absolute; inset: -20px;
-  width: 200px; height: 200px;
+  position: absolute; inset: -16px;
+  width: 156px; height: 156px;
   pointer-events: none;
 }
 
 .avatar {
   position: relative;
-  width: 136px; height: 136px; margin: 12px;
+  width: 104px; height: 104px; margin: 10px;
   border-radius: 50%; overflow: hidden;
   background: #111;
   border: 3px solid rgba(255,255,255,0.9);
-  box-shadow: 0 0 24px rgba(255,255,255,0.4), 0 0 60px var(--main), 0 0 100px rgba(180,108,255,0.3);
+  box-shadow: 0 0 18px rgba(255,255,255,0.35), 0 0 44px var(--main), 0 0 80px rgba(180,108,255,0.25);
 }
 .avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
 .avatar-fallback {
@@ -355,8 +355,8 @@ body {
 
 /* ───── NAME / BIO ───── */
 .username {
-  margin: 20px 0 6px;
-  font-size: 50px; font-style: italic; font-weight: 700; letter-spacing: 3px;
+  margin: 10px 0 4px;
+  font-size: 40px; font-style: italic; font-weight: 700; letter-spacing: 3px;
   background: linear-gradient(90deg, #fff 0%, var(--main) 25%, var(--second) 50%, var(--third) 75%, #fff 100%);
   background-size: 300%;
   -webkit-background-clip: text; color: transparent; background-clip: text;
@@ -369,13 +369,13 @@ body {
 
 .bio {
   color: rgba(255,255,255,0.7);
-  font-size: 14px; letter-spacing: 0.5px; line-height: 1.5;
+  font-size: 13px; letter-spacing: 0.5px; line-height: 1.4;
   margin-top: 2px;
 }
 
 /* ───── BADGES ───── */
 .badges {
-  margin-top: 14px;
+  margin-top: 10px;
   display: flex; justify-content: center; gap: 6px; flex-wrap: wrap;
 }
 .badge {
@@ -397,27 +397,27 @@ body {
 
 /* ───── STATUS ───── */
 .online-row {
-  margin-top: 14px; display: flex; align-items: center;
+  margin-top: 8px; display: flex; align-items: center;
   justify-content: center; gap: 8px;
 }
 .online-dot {
   width: 8px; height: 8px; border-radius: 50%; background: #00ff99;
   box-shadow: 0 0 10px #00ff99; animation: dotPulse 1.8s infinite;
 }
-.online-text { color: #00ff99; font-size: 14px; font-weight: 500; }
+.online-text { color: #00ff99; font-size: 13px; font-weight: 500; }
 #statusLine {
-  margin-top: 6px; color: rgba(255,255,255,0.45); font-size: 12px;
+  margin-top: 4px; color: rgba(255,255,255,0.45); font-size: 12px;
   font-family: var(--mono);
 }
 
 /* ───── MINI GRID ───── */
 .mini-grid {
-  margin-top: 22px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-top: 14px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
 }
 
 .mini-card {
-  border-radius: 20px; padding: 16px;
+  border-radius: 18px; padding: 13px;
   background: rgba(255,255,255,0.07);
   border: 1px solid rgba(255,255,255,0.18);
   backdrop-filter: blur(12px); text-align: left;
@@ -731,15 +731,18 @@ body {
 
 /* ───── RESPONSIVE ───── */
 @media (max-width: 560px) {
-  #page { padding: 68px 12px 92px; }
-  .card { padding: 26px 18px 22px; }
-  .username { font-size: 38px; }
+  #page { padding: 54px 10px 88px; }
+  .card { padding: 18px 14px 16px; }
+  .username { font-size: 30px; }
   .mini-grid { grid-template-columns: 1fr; }
   .full-card { padding: 18px 16px; }
   .hint { display: none; }
   * { cursor: auto !important; }
   .cursor, .cursor-dot, .trail { display: none !important; }
-  .avatar-wrap { transform: none !important; }   /* no parallax without a pointer */
+  .avatar-wrap { transform: none !important; width: 104px; height: 104px; }
+  .avatar { width: 88px; height: 88px; margin: 8px; }
+  #visualizer { width: 132px; height: 132px; inset: -14px; }
+  .avatar-ring { inset: -7px; }
   /* keep the bottom bar's 8 buttons on one row */
   #bottomBar { gap: 4px; padding: 6px 8px; }
   .bar-btn { width: 32px; height: 32px; }
@@ -749,15 +752,17 @@ body {
 }
 
 @media (max-width: 380px) {
-  .username { font-size: 30px; }
+  .username { font-size: 27px; }
   .link-grid { grid-template-columns: repeat(3,1fr); }
+  #bottomBar { gap: 3px; padding: 5px 6px; }
+  .bar-btn { width: 30px; height: 30px; }
 }
 
 /* ───── MINIMAL MODE ───── */
+/* minimal = clean view: hide HUD chips + hint, but KEEP settings reachable */
 .minimal #fps-chip,
 .minimal #views-chip,
 .minimal #clock-chip,
-.minimal #settingsBtn,
 .minimal .hint { display: none; }
 
 /* ───── REDUCED MOTION ───── */
