@@ -304,6 +304,28 @@ body {
   100% { background-position: 0% 50%; }
 }
 
+/* holographic glare that follows the cursor across the card */
+.card-glare {
+  position: absolute; inset: 0; border-radius: var(--radius-card);
+  pointer-events: none; z-index: 3;
+  transform: translateZ(40px);   /* sit in front so the sheen shows over content */
+  background: radial-gradient(circle 200px at var(--gx,50%) var(--gy,50%),
+              rgba(255,255,255,0.13), rgba(255,255,255,0.05) 35%, transparent 65%);
+  opacity: 0; transition: opacity 0.35s ease;
+  mix-blend-mode: screen;
+}
+.card:hover .card-glare { opacity: 1; }
+
+/* depth layers — float at different translateZ so they parallax on tilt */
+.avatar-wrap { transform: translateZ(34px); }
+.username    { transform: translateZ(26px); }
+.badges      { transform: translateZ(20px); }
+.mini-grid   { transform: translateZ(14px); }
+#statsRow    { transform: translateZ(10px); }
+
+/* slight scale so background parallax never reveals edges */
+#bgvideo, #shaderbg { transition: transform 0.2s ease-out; }
+
 /* ───── AVATAR ───── */
 .avatar-wrap {
   position: relative; width: 124px; height: 124px; margin: 0 auto 2px;
@@ -739,8 +761,11 @@ body {
   .hint { display: none; }
   * { cursor: auto !important; }
   .cursor, .cursor-dot, .trail { display: none !important; }
-  .avatar-wrap { transform: none !important; width: 104px; height: 104px; }
+  /* no 3D depth without a pointer */
+  .avatar-wrap, .username, .badges, .mini-grid, #statsRow { transform: none !important; }
+  .avatar-wrap { width: 104px; height: 104px; }
   .avatar { width: 88px; height: 88px; margin: 8px; }
+  .card-glare { display: none; }
   #visualizer { width: 132px; height: 132px; inset: -14px; }
   .avatar-ring { inset: -7px; }
   /* keep the bottom bar's 8 buttons on one row */
@@ -759,11 +784,17 @@ body {
 }
 
 /* ───── MINIMAL MODE ───── */
-/* minimal = clean view: hide HUD chips + hint, but KEEP settings reachable */
+/* minimal = clean view: hide HUD chips, hint, decorative noise, exam/streak +
+   stats rows. Settings stays reachable so you can always toggle back. */
 .minimal #fps-chip,
 .minimal #views-chip,
 .minimal #clock-chip,
-.minimal .hint { display: none; }
+.minimal .hint,
+.minimal #grain,
+.minimal #scanlines,
+.minimal #extraLine,
+.minimal #statsRow { display: none !important; }
+.minimal .card::before { animation: none; opacity: 0.4; }
 
 /* ───── REDUCED MOTION ───── */
 @media (prefers-reduced-motion: reduce) {
@@ -891,10 +922,6 @@ body {
 <div id="vignette"></div>
 
 <!-- HUD CHIPS -->
-<div class="hud-chip" id="fps-chip">
-  <svg width="10" height="10" viewBox="0 0 10 10" fill="rgba(138,216,255,0.7)"><circle cx="5" cy="5" r="5"/></svg>
-  <span id="fpsVal">FPS: 0</span>
-</div>
 <div class="hud-chip" id="clock-chip">
   <span id="clockTime">--:--</span>
   <span id="clockExtra" style="display:inline-flex;align-items:center;gap:6px;">
@@ -914,6 +941,7 @@ body {
 
   <!-- MAIN CARD -->
   <div class="card" id="card">
+    <div class="card-glare" id="cardGlare"></div>
 
     <!-- AVATAR -->
     <div class="avatar-wrap">
@@ -1027,7 +1055,7 @@ body {
     </div>
 
     <!-- STATS ROW -->
-    <div class="mini-grid" style="margin-top:12px; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+    <div class="mini-grid" id="statsRow" style="margin-top:12px; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
       <div class="mini-card" style="padding:12px;">
         <div class="stat-item" style="background:transparent;border:none;padding:4px 0;">
           <div class="stat-val" id="statSongs">3</div>
@@ -1806,17 +1834,11 @@ function drawVisualizer() {
 }
 
 // ─── MAIN LOOP ───
-let frames = 0, fpsLast = performance.now();
-function loop(now) {
+function loop() {
   drawEffects();
   drawVisualizer();
   updateProgress();
   updateLyricHighlight();
-  frames++;
-  if (now - fpsLast >= 500) {
-    document.getElementById("fpsVal").textContent = "FPS: " + Math.round(frames * 1000 / (now - fpsLast));
-    frames = 0; fpsLast = now;
-  }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
@@ -1851,21 +1873,35 @@ document.addEventListener("mousemove", e => { mouseX = e.clientX; mouseY = e.cli
   requestAnimationFrame(animateCursor);
 })();
 
-// ─── CARD 3D TILT + PSEUDO-3D AVATAR PARALLAX ───
+// ─── CARD 3D TILT + DEPTH PARALLAX + GLARE ───
 let lastTilt = 0;
 const avatarWrap = document.querySelector(".avatar-wrap");
+const cardGlare = document.getElementById("cardGlare");
+const shaderEl = document.getElementById("shaderbg");
 document.addEventListener("mousemove", e => {
   const now = performance.now();
-  if (now - lastTilt < 30) return; lastTilt = now;
-  const x = (innerWidth/2 - e.pageX) / 65;
-  const y = (innerHeight/2 - e.pageY) / 65;
+  if (now - lastTilt < 24) return; lastTilt = now;
+  const x = (innerWidth/2 - e.pageX) / 55;   // a touch stronger tilt
+  const y = (innerHeight/2 - e.pageY) / 55;
   card.style.transform = `translateY(0) scale(var(--scale)) rotateY(${-x}deg) rotateX(${y}deg)`;
-  // subtle parallax float (no rotation, so the pic stays a clean circle)
-  if (avatarWrap) avatarWrap.style.transform = `translate(${-x*1.1}px, ${y*1.1}px)`;
+  // avatar floats forward (translateZ) + parallax, no rotation so it stays round
+  if (avatarWrap) avatarWrap.style.transform = `translateZ(34px) translate(${-x*1.1}px, ${y*1.1}px)`;
+  // holographic glare follows the cursor across the card surface
+  if (cardGlare) {
+    const r = card.getBoundingClientRect();
+    cardGlare.style.setProperty("--gx", ((e.clientX - r.left) / r.width * 100) + "%");
+    cardGlare.style.setProperty("--gy", ((e.clientY - r.top) / r.height * 100) + "%");
+  }
+  // background parallax for layered depth (scaled so edges never show)
+  const bgT = `scale(1.08) translate(${x*0.5}px, ${y*0.5}px)`;
+  bgvideo.style.transform = bgT;
+  if (shaderEl) shaderEl.style.transform = bgT;
 });
 document.addEventListener("mouseleave", () => {
   card.style.transform = "translateY(0) scale(var(--scale))";
-  if (avatarWrap) avatarWrap.style.transform = "";
+  if (avatarWrap) avatarWrap.style.transform = "translateZ(34px)";
+  bgvideo.style.transform = "scale(1.08)";
+  if (shaderEl) shaderEl.style.transform = "scale(1.08)";
 });
 
 // ─── KEYBOARD ───
@@ -2246,18 +2282,19 @@ function updateLyricHighlight() {
 }
 // pick the best lrclib hit: must have lyrics, prefer the one whose duration
 // matches our local track (kills wrong-song matches), prefer synced
-function pickBestLyric(hits, wantDur) {
+function pickBestLyric(hits, wantDur, strict) {
   const withLy = (hits || []).filter(h => h.syncedLyrics || h.plainLyrics);
   if (!withLy.length) return null;
   if (wantDur) {
     const sorted = withLy.slice().sort((a, b) =>
       Math.abs((a.duration || 0) - wantDur) - Math.abs((b.duration || 0) - wantDur));
-    // only trust a duration match within 8s, otherwise it's probably the wrong song
     if (Math.abs((sorted[0].duration || 0) - wantDur) <= 8) {
-      const synced = sorted.find(h => Math.abs((h.duration || 0) - wantDur) <= 8 && h.syncedLyrics);
-      return synced || sorted[0];
+      return sorted.find(h => Math.abs((h.duration || 0) - wantDur) <= 8 && h.syncedLyrics) || sorted[0];
     }
-    return null;
+    // no close duration match: only reject outright when we're not confident
+    // (i.e. fuzzy file-name search). With an explicit artist, trust the hit.
+    if (strict) return null;
+    return sorted.find(h => h.syncedLyrics) || sorted[0];
   }
   return withLy.find(h => h.syncedLyrics) || withLy[0];
 }
@@ -2274,9 +2311,28 @@ function applyLyrics(best, idx) {
   } else {
     const a = songArtist(SONGS[idx]);
     box.textContent = 'no lyrics found for "' + songTitle(SONGS[idx]) + '"' +
-      (a ? "" : " — set a title/artist in the file for a reliable match");
+      (a ? " (lrclib may not have this track)" : " — set a title/artist in the file for a reliable match");
   }
   lyricsFor = idx;
+}
+// build several query attempts, broadest match wins (handles parentheticals,
+// non-latin titles, and artist-name variations that lrclib indexes oddly)
+function lyricQueries(s) {
+  const enc = encodeURIComponent;
+  const title = songTitle(s), artist = songArtist(s);
+  const core = title.replace(/\s*[\(（].*?[\)）]\s*/g, "").trim();   // strip "(...)"
+  const paren = (title.match(/[\(（]([^\)）]+)[\)）]/) || [])[1];      // text inside "(...)"
+  const qs = [];
+  if (s && s.lyricsQuery) qs.push("q=" + enc(s.lyricsQuery));        // optional manual override
+  if (artist) {
+    qs.push("track_name=" + enc(title) + "&artist_name=" + enc(artist));
+    if (core && core !== title) qs.push("track_name=" + enc(core) + "&artist_name=" + enc(artist));
+    qs.push("q=" + enc(title + " " + artist));
+  }
+  qs.push("q=" + enc(title));
+  if (core && core !== title) qs.push("q=" + enc(core));
+  if (paren) qs.push("q=" + enc(paren));
+  return qs.filter((q, i, a) => a.indexOf(q) === i);               // dedupe
 }
 const lyricsCache = {};
 function fetchLyrics(force) {
@@ -2285,21 +2341,25 @@ function fetchLyrics(force) {
   if (lyricsCache[idx] !== undefined) { applyLyrics(lyricsCache[idx], idx); return; }
   const box = document.getElementById("lyricsText");
   const s = SONGS[idx];
-  const title = songTitle(s), artist = songArtist(s);
   syncedLines = null; lastLrcIdx = -1;
   box.classList.remove("synced");
   box.textContent = "loading lyrics…";
-  const query = artist
-    ? "track_name=" + encodeURIComponent(title) + "&artist_name=" + encodeURIComponent(artist)
-    : "q=" + encodeURIComponent(title);
-  fetch("https://lrclib.net/api/search?" + query)
-    .then(r => r.json())
-    .then(hits => {
-      const best = pickBestLyric(hits, songDurations[idx]);
-      lyricsCache[idx] = best;          // cache result (incl. null) so reopen is instant
-      applyLyrics(best, idx);
-    })
-    .catch(() => { if (idx === songIndex) box.textContent = "couldn't load lyrics (offline?)"; });
+  const queries = lyricQueries(s);
+  const wantDur = songDurations[idx];
+  const strict = !songArtist(s);          // strict duration filter only for fuzzy searches
+  let qi = 0;
+  (function tryNext() {
+    if (qi >= queries.length) { lyricsCache[idx] = null; applyLyrics(null, idx); return; }
+    const q = queries[qi++];
+    fetch("https://lrclib.net/api/search?" + q)
+      .then(r => r.json())
+      .then(hits => {
+        const best = pickBestLyric(hits, wantDur, strict);
+        if (best) { lyricsCache[idx] = best; applyLyrics(best, idx); }
+        else tryNext();
+      })
+      .catch(() => { if (idx === songIndex) box.textContent = "couldn't load lyrics (offline?)"; });
+  })();
 }
 
 // ─── GUESTBOOK (Supabase REST) ───
